@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同人誌成本追蹤</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f11;--bg2:#17171b;--bg3:#1e1e24;
+  --border:#2a2a33;--border2:#363640;
+  --text:#e8e8f0;--text2:#8888a0;--text3:#55556a;
+  --green:#2dd68c;--green-bg:#1a3d2b;--green-border:#2a6644;
+  --amber:#f5a623;--amber-bg:#3a2a0e;--amber-border:#7a4e10;
+  --red:#f05050;--blue:#5b9cf6;
+  --radius:8px;--radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;font-size:14px;min-height:100vh;padding:28px 24px 60px}
+h1{font-size:20px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
+.subtitle{font-size:13px;color:var(--text2);margin-bottom:24px}
+.slbl{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+/* TABS */
+.tabs-bar{display:flex;align-items:flex-end;gap:0;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-size:13px;padding:8px 16px;cursor:pointer;white-space:nowrap;margin-bottom:-1px;font-family:'Noto Sans TC',sans-serif;transition:color .15s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--text);border-bottom:2px solid var(--text);background:var(--bg2)}
+.tab-add{background:none;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--text3);font-size:12px;padding:4px 12px;cursor:pointer;margin-left:8px;margin-bottom:4px;font-family:'Noto Sans TC',sans-serif}
+.tab-add:hover{color:var(--blue);border-color:var(--blue)}
+
+/* PANELS */
+.panel{display:none;background:var(--bg2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:16px}
+.panel.active{display:block}
+.panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.panel-title{background:none;border:none;border-bottom:1px dashed var(--border2);color:var(--text);font-size:15px;font-weight:500;font-family:'Noto Sans TC',sans-serif;padding:2px 4px;min-width:80px}
+.panel-title:focus{outline:none;border-bottom-color:var(--blue)}
+.cost-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.cost-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+.cost-card label{font-size:11px;color:var(--text2);letter-spacing:.04em}
+.cost-card input,.cost-card select{background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:4px 8px}
+.cost-card input:focus,.cost-card select:focus{outline:none;border-color:var(--blue)}
+.cost-hint{font-size:11px;color:var(--text2);margin-top:4px}
+.cost-hint strong{color:var(--text);font-family:'DM Mono',monospace}
+.del-sheet-btn{background:none;border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:12px;padding:4px 10px;cursor:pointer;font-family:'Noto Sans TC',sans-serif}
+.del-sheet-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* LEGEND */
+.legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
+.dot{width:8px;height:8px;border-radius:50%}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;min-width:820px}
+th{font-size:11px;font-weight:500;color:var(--text3);text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+th.tr,td.tr{text-align:right}
+td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px}
+tr.main-row:last-of-type td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.sub-row td{background:var(--bg3);font-size:11px;color:var(--text3);padding:3px 8px;border-bottom:1px solid var(--border)}
+.sub-row:hover td{background:var(--bg3)}
+.row-decided td:first-child{border-left:2px solid var(--green-border)}
+.row-pending td:first-child{border-left:2px solid var(--amber-border)}
+.row-empty td:first-child{border-left:2px solid var(--border2)}
+.sub-decided{border-left:2px solid var(--green-border)!important}
+.sub-pending{border-left:2px solid var(--amber-border)!important}
+.sub-empty{border-left:2px solid var(--border2)!important}
+
+select.inline{font-size:12px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);cursor:pointer;font-family:'Noto Sans TC',sans-serif}
+select.inline:focus{outline:none;border-color:var(--blue)}
+.ci{width:64px;font-size:12px;text-align:right;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);font-family:'DM Mono',monospace}
+.ci:focus{outline:none;border-color:var(--blue)}
+.vi{font-size:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 6px;color:var(--text);width:110px;font-family:'Noto Sans TC',sans-serif}
+.vi:focus{outline:none;border-color:var(--blue)}
+.editable{outline:none;border-bottom:1px dashed transparent;transition:border-color .15s}
+.editable:focus{border-bottom-color:var(--border2)}
+
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;white-space:nowrap}
+.bd{background:var(--green-bg);color:var(--green)}
+.bp{background:var(--amber-bg);color:var(--amber)}
+.be{background:var(--bg3);color:var(--text3)}
+.net-pos{color:var(--green);font-weight:500}
+.net-neg{color:var(--red);font-weight:500}
+.tdim{color:var(--text2)}
+.tinfo{color:var(--blue);font-size:11px}
+
+.add-row-btn{display:flex;align-items:center;gap:8px;background:none;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--text2);font-size:13px;padding:7px 14px;cursor:pointer;width:100%;margin-top:8px;font-family:'Noto Sans TC',sans-serif}
+.add-row-btn:hover{border-color:var(--blue);color:var(--blue)}
+.del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px}
+.del-btn:hover{color:var(--red)}
+.plus-a{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;margin-left:3px;font-family:'Noto Sans TC',sans-serif}
+.plus-a:hover{color:var(--blue)}
+
+/* SUMMARY */
+.sheet-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.gstat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center}
+.gstat .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.gstat .val{font-size:19px;font-weight:500;font-family:'DM Mono',monospace}
+
+/* GRAND TOTAL */
+.grand-section{margin-top:28px}
+.grand-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.grand-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center}
+.grand-stat .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.grand-stat .val{font-size:22px;font-weight:500;font-family:'DM Mono',monospace}
+.prog-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.prog-hdr{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:8px}
+.prog-bg{background:var(--bg3);border-radius:4px;height:8px;overflow:hidden}
+.prog-fill{height:8px;border-radius:4px;transition:width .4s}
+.prog-note{font-size:12px;color:var(--text2);margin-top:8px}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+</style>
+</head>
+<body>
+
+<h1>同人誌成本追蹤</h1>
+<p class="subtitle">每張稿圖獨立分頁 · 底部合計所有圖嘅總成本同收入</p>
+
+<div class="tabs-bar" id="tabs-bar"></div>
+<div id="panels-wrap"></div>
+
+<div class="grand-section">
+  <div class="divider"></div>
+  <div class="slbl">所有稿圖合計</div>
+  <div class="grand-grid" id="grand-stats"></div>
+  <div class="prog-wrap" id="grand-prog"></div>
+</div>
+
+<script>
+let sheets = [{
+  title: "稿圖 1",
+  feeBase: 1440,
+  feeMode: "commercial",
+  items: [
+    {g:"色紙",spec:"14x21cm 觸感膜",artists:[{n:"秋莜",fee:100},{n:"里小拾",fee:54}],sel:null,price:20,qty:10,print:0,vendor:"琉璃色紙定制"},
+    {g:"雙面明信片",spec:"",artists:[{n:"深入淺草",fee:80},{n:"里小拾",fee:54}],sel:null,price:8,qty:20,print:0,vendor:""},
+    {g:"雙面拍立得 A",spec:"兩款之一",artists:[{n:"深入淺草",fee:80},{n:"里小拾",fee:54}],sel:null,price:10,qty:20,print:0,vendor:""},
+    {g:"雙面拍立得 B",spec:"兩款之二",artists:[{n:"深入淺草",fee:80},{n:"里小拾",fee:54}],sel:null,price:8,qty:20,print:0,vendor:""},
+    {g:"透卡",spec:"",artists:[{n:"—（待填）",fee:0}],sel:0,price:8,qty:20,print:0,vendor:""},
+    {g:"雙面鐳射票 A",spec:"",artists:[{n:"里小拾",fee:72}],sel:0,price:10,qty:20,print:0,vendor:""},
+    {g:"雙面鐳射票 B",spec:"",artists:[{n:"里小拾",fee:72}],sel:0,price:8,qty:20,print:0,vendor:""},
+    {g:"立牌底座",spec:"",artists:[{n:"唯裳",fee:25},{n:"里小拾",fee:35}],sel:null,price:40,qty:10,print:0,vendor:""},
+    {g:"外殼（嘉嘉）",spec:"8cm+3.5cm框+小尾巴",artists:[{n:"里小拾",fee:92}],sel:0,price:0,qty:50,print:7,vendor:"小栗子定制(PDD)"},
+    {g:"光柵卡（嘉嘉）",spec:"",artists:[{n:"滴滴ONE",fee:99}],sel:0,price:0,qty:0,print:0,vendor:""},
+    {g:"外殼（翎翎）",spec:"",artists:[{n:"里小拾",fee:92},{n:"（其他）",fee:0}],sel:null,price:0,qty:0,print:0,vendor:""},
+    {g:"光柵卡（翎翎）",spec:"",artists:[{n:"滴滴ONE",fee:99},{n:"（其他）",fee:0}],sel:null,price:0,qty:0,print:0,vendor:""},
+  ]
+}];
+let activeTab = 0;
+
+function feeMult(s){ return s.feeMode === 'buyout' ? 3 : 2 }
+function sheetFee(s){ return (s.feeBase||0) * feeMult(s) }
+function itemArtistFee(it){ if(it.sel===null) return 0; const a=it.artists[it.sel]; return a?a.fee:0 }
+function itemCommercial(it,mult){ return itemArtistFee(it)*mult }
+function itemPrintCost(it){ return (it.print||0)*(it.qty||0) }
+function itemRev(it){ return (it.price||0)*(it.qty||0) }
+function itemNet(it,mult){ return itemRev(it)-itemCommercial(it,mult)-itemPrintCost(it) }
+function sheetRev(s){ return s.items.reduce((t,it)=>t+itemRev(it),0) }
+function sheetCost(s){
+  const m=feeMult(s);
+  return sheetFee(s)+s.items.reduce((t,it)=>t+itemCommercial(it,m)+itemPrintCost(it),0)
+}
+function status(it){
+  if(it.sel===null) return 'p';
+  if(!it.artists[it.sel].fee) return 'e';
+  return 'd';
+}
+
+function render(){ renderTabs(); renderPanels(); calcGrand() }
+
+function renderTabs(){
+  document.getElementById('tabs-bar').innerHTML =
+    sheets.map((s,i)=>
+      `<button class="tab-btn${i===activeTab?' active':''}" onclick="switchTab(${i})">${s.title}</button>`
+    ).join('') +
+    `<button class="tab-add" onclick="addSheet()">＋ 新稿圖</button>`;
+}
+
+function renderPanels(){
+  document.getElementById('panels-wrap').innerHTML = sheets.map((s,si)=>{
+    const mult = feeMult(s);
+    const feeTot = sheetFee(s);
+    const rev = sheetRev(s);
+    const cost = sheetCost(s);
+    const profit = rev - cost;
+    const ok = profit >= 0;
+
+    const rows = s.items.map((it,ii)=>{
+      const st = status(it);
+      const rc = st==='d'?'row-decided':st==='p'?'row-pending':'row-empty';
+      const sb = st==='d'?'sub-decided':st==='p'?'sub-pending':'sub-empty';
+      const fee = itemArtistFee(it);
+      const commercial = itemCommercial(it,mult);
+      const printCost = itemPrintCost(it);
+      const rev2 = itemRev(it);
+      const net = itemNet(it,mult);
+      const netOk = net >= 0;
+      const hasData = rev2||commercial||printCost;
+      const badge = st==='d'
+        ? '<span class="badge bd">已選</span>'
+        : st==='p'
+          ? '<span class="badge bp">待定</span>'
+          : '<span class="badge be">待填</span>';
+      const opts = it.artists.map((ar,ai)=>
+        `<option value="${ai}"${it.sel===ai?' selected':''}>${ar.n}</option>`
+      ).join('') + `<option value="null"${it.sel===null?' selected':''}>— 未選 —</option>`;
+
+      const mainRow = `<tr class="main-row ${rc}">
+        <td><span class="editable" contenteditable="true" onblur="updateName(${si},${ii},this.innerText)">${it.g}</span>${it.spec?`<div style="font-size:11px;color:#8888a0;margin-top:2px">${it.spec}</div>`:''}</td>
+        <td>
+          <select class="inline" onchange="selArtist(${si},${ii},this.value)">${opts}</select>
+          <button class="plus-a" onclick="addArtist(${si},${ii})">＋美工</button>
+        </td>
+        <td class="tr" style="font-family:'DM Mono',monospace">${fee?'$'+fee:'—'}</td>
+        <td><input class="vi" type="text" placeholder="廠商名稱" value="${it.vendor||''}" oninput="updItem(${si},${ii},'vendor',this.value)"></td>
+        <td><input class="ci" type="number" min="0" value="${it.price||0}" oninput="updItem(${si},${ii},'price',this.value)"></td>
+        <td><input class="ci" type="number" min="0" value="${it.qty||0}" oninput="updItem(${si},${ii},'qty',this.value)"></td>
+        <td><input class="ci" type="number" min="0" step="1" value="${it.print||0}" oninput="updItem(${si},${ii},'print',this.value)"></td>
+        <td class="tr" style="font-family:'DM Mono',monospace">${rev2?'$'+rev2:'—'}</td>
+        <td class="tr ${netOk?'net-pos':'net-neg'}">${hasData?(netOk?'+':'-')+' $'+Math.abs(net):'—'}</td>
+        <td>${badge}</td>
+        <td><button class="del-btn" onclick="delItem(${si},${ii})" title="刪除">✕</button></td>
+      </tr>`;
+
+      const subRow = `<tr class="sub-row">
+        <td class="${sb}" colspan="2">↳ 商用費（稿費 ×${mult}）</td>
+        <td class="tr" colspan="2" style="font-family:'DM Mono',monospace;color:#8888a0">${commercial?'$'+commercial:'—'}</td>
+        <td colspan="2" style="padding-left:8px">↳ 印刷成本（@$${it.print||0} × ${it.qty||0}）</td>
+        <td class="tr" style="font-family:'DM Mono',monospace;color:#8888a0">${printCost?'$'+printCost:'—'}</td>
+        <td colspan="3"></td>
+      </tr>`;
+
+      return mainRow + subRow;
+    }).join('');
+
+    return `<div class="panel${si===activeTab?' active':''}" id="panel-${si}">
+      <div class="panel-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="panel-title" value="${s.title}" oninput="updTitle(${si},this.value)">
+          ${sheets.length>1?`<button class="del-sheet-btn" onclick="delSheet(${si})">✕ 刪除</button>`:''}
+        </div>
+        <div class="cost-row">
+          <div class="cost-card">
+            <label>稿費 ($)</label>
+            <input type="number" min="0" value="${s.feeBase||0}" style="width:110px" oninput="updSheet(${si},'feeBase',this.value)">
+          </div>
+          <div class="cost-card">
+            <label>稿費模式</label>
+            <select style="width:130px" onchange="updSheet(${si},'feeMode',this.value)">
+              <option value="commercial"${s.feeMode==='commercial'?' selected':''}>商用 ×2</option>
+              <option value="buyout"${s.feeMode==='buyout'?' selected':''}>買斷 ×3</option>
+            </select>
+            <div class="cost-hint">稿費小計：<strong>$${Math.round(feeTot).toLocaleString()}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#2a6644"></div>已選定</div>
+        <div class="legend-item"><div class="dot" style="background:#7a4e10"></div>仲諗緊</div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="min-width:100px">品項</th>
+            <th>選擇美工</th>
+            <th class="tr">稿費</th>
+            <th>廠商</th>
+            <th class="tr">售價($)</th>
+            <th class="tr">數量</th>
+            <th class="tr">印刷費@($)</th>
+            <th class="tr">收入</th>
+            <th class="tr">淨收益</th>
+            <th>狀態</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addItem(${si})">＋ 加新品項</button>
+
+      <div class="sheet-summary">
+        <div class="gstat"><div class="lbl">此圖總成本</div><div class="val">$${Math.round(cost).toLocaleString()}</div></div>
+        <div class="gstat"><div class="lbl">預計收入</div><div class="val">$${Math.round(rev).toLocaleString()}</div></div>
+        <div class="gstat"><div class="lbl">盈虧</div><div class="val" style="color:${ok?'#2dd68c':'#f05050'}">${ok?'+':''}$${Math.round(profit).toLocaleString()}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calcGrand(){
+  const totalCost = sheets.reduce((t,s)=>t+sheetCost(s),0);
+  const totalRev = sheets.reduce((t,s)=>t+sheetRev(s),0);
+  const profit = totalRev - totalCost;
+  const ok = profit >= 0;
+  const pct = totalCost>0 ? Math.min((totalRev/totalCost)*100,100) : 0;
+
+  document.getElementById('grand-stats').innerHTML = `
+    <div class="grand-stat"><div class="lbl">總成本</div><div class="val">$${Math.round(totalCost).toLocaleString()}</div></div>
+    <div class="grand-stat"><div class="lbl">預計收入</div><div class="val">$${Math.round(totalRev).toLocaleString()}</div></div>
+    <div class="grand-stat"><div class="lbl">盈虧</div><div class="val" style="color:${ok?'#2dd68c':'#f05050'}">${ok?'+':''}$${Math.round(profit).toLocaleString()}</div></div>
+  `;
+  document.getElementById('grand-prog').innerHTML = `
+    <div class="prog-hdr">
+      <span>回本進度</span>
+      <span style="font-weight:500;color:#e8e8f0;font-family:'DM Mono',monospace">${Math.round(pct)}%</span>
+    </div>
+    <div class="prog-bg">
+      <div class="prog-fill" style="width:${pct}%;background:${ok?'#2dd68c':'#f05050'}"></div>
+    </div>
+    <div class="prog-note">${profit<0
+      ?`仲差 <strong style="color:#f05050">$${Math.round(Math.abs(profit)).toLocaleString()}</strong> 先回本`
+      :`已超出成本 <strong style="color:#2dd68c">$${Math.round(profit).toLocaleString()}</strong>，恭喜！`
+    }</div>
+  `;
+}
+
+function switchTab(i){ activeTab=i; render() }
+function addSheet(){
+  sheets.push({title:`稿圖 ${sheets.length+1}`,feeBase:1440,feeMode:'commercial',
+    items:[{g:"新品項",spec:"",artists:[{n:"（美工名）",fee:0}],sel:null,price:0,qty:0,print:0,vendor:""}]});
+  activeTab=sheets.length-1; render();
+}
+function delSheet(si){
+  if(sheets.length<2) return;
+  sheets.splice(si,1); activeTab=Math.min(activeTab,sheets.length-1); render();
+}
+function updTitle(si,v){ sheets[si].title=v; renderTabs() }
+function updSheet(si,f,v){ sheets[si][f]=f==='feeBase'?parseFloat(v)||0:v; render() }
+function selArtist(si,ii,v){ sheets[si].items[ii].sel=v==='null'?null:parseInt(v); render() }
+function updItem(si,ii,f,v){ sheets[si].items[ii][f]=f==='vendor'?v:(parseFloat(v)||0); render() }
+function updateName(si,ii,v){ sheets[si].items[ii].g=v.trim() }
+function addItem(si){
+  sheets[si].items.push({g:"新品項",spec:"",artists:[{n:"（美工名）",fee:0}],sel:null,price:0,qty:0,print:0,vendor:""});
+  render();
+}
+function delItem(si,ii){ sheets[si].items.splice(ii,1); render() }
+function addArtist(si,ii){
+  const n=prompt('美工名稱：'); if(!n) return;
+  const fee=parseInt(prompt('稿費 ($)：')||'0');
+  sheets[si].items[ii].artists.push({n,fee}); render();
+}
+
+render();
+</script>
+</body>
+</html>
