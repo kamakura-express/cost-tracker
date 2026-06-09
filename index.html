@@ -335,6 +335,10 @@ function renderPanels(){
     const mult=feeMult(s),feeTot=sheetFee(s),miscTot=sheetMisc(s);
     const rev=sheetRev(s),cost=sheetCost(s),profit=rev-cost,ok=profit>=0;
     const rows=s.items.map((it,ii)=>{
+      // sanitize item
+      if(!it.artists||!it.artists.length)it.artists=[{n:'（待填）',fee:0}];
+      it.artists=it.artists.map(a=>a&&a.n?a:{n:'（待填）',fee:0});
+      if(it.sel!==null&&it.sel!==undefined&&it.sel>=it.artists.length)it.sel=null;
       const st=status(it),rc=st==='d'?'row-decided':st==='p'?'row-pending':'row-empty';
       const sb=st==='d'?'sub-d':st==='p'?'sub-p':'sub-e';
       const fee=itemArtistFee(it),commercial=itemCommercial(it,mult);
@@ -368,6 +372,9 @@ function renderPanels(){
       </tr>`;
     }).join('');
     const mCards=s.items.map((it,ii)=>{
+      if(!it.artists||!it.artists.length)it.artists=[{n:'（待填）',fee:0}];
+      it.artists=it.artists.map(a=>a&&a.n?a:{n:'（待填）',fee:0});
+      if(it.sel!==null&&it.sel!==undefined&&it.sel>=it.artists.length)it.sel=null;
       const st=status(it),cls=st==='d'?'decided':st==='p'?'pending':'empty';
       const commercial=itemCommercial(it,mult),printCost=itemPrintCost(it),shipping=itemShipping(it);
       const rev2=itemRev(it),net=itemNet(it,mult),netOk=net>=0,hasData=rev2||commercial||printCost||shipping;
