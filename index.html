@@ -209,7 +209,7 @@ select.inline:focus{outline:none;border-color:var(--blue)}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
-const PASSWORD = 'foundinyoureyes';
+const PASSWORD = 'doujin2024';
 
 firebase.initializeApp({
   apiKey: "AIzaSyBHBDBv3JrN4qO3jSIXCMrshDTUQ_bYln0",
@@ -274,9 +274,21 @@ function startApp(){
   if(listening)return;
   listening=true;
   db.ref(DATA_PATH).on('value',snap=>{
-    const val=snap.val();
-    if(val){sheets=val;}
-    else{db.ref(DATA_PATH).set(sheets);}
+    const raw=snap.val();
+    if(raw){
+      const arr=Array.isArray(raw)?raw:Object.values(raw);
+      sheets=arr.map(s=>({
+        ...s,
+        miscFees:Array.isArray(s.miscFees)?s.miscFees:Object.values(s.miscFees||{}),
+        items:(Array.isArray(s.items)?s.items:Object.values(s.items||{})).map(it=>({
+          ...it,
+          sel:(it.sel===undefined||it.sel===null)?null:it.sel,
+          artists:Array.isArray(it.artists)?it.artists:Object.values(it.artists||[{n:'（待填）',fee:0}])
+        }))
+      }));
+    } else {
+      db.ref(DATA_PATH).set(sheets);
+    }
     render();
     document.getElementById('save-label').textContent='已同步 ✓';
   },err=>{
@@ -298,7 +310,7 @@ function saveData(){
 
 function feeMult(s){return s.feeMode==='buyout'?3:2}
 function sheetFee(s){return(s.feeBase||0)*feeMult(s)}
-function itemArtistFee(it){if(it.sel===null)return 0;const a=it.artists[it.sel];return a?a.fee:0}
+function itemArtistFee(it){if(it.sel===null||it.sel===undefined||!it.artists)return 0;const a=it.artists[it.sel];return a?a.fee:0}
 function itemCommercial(it,m){return itemArtistFee(it)*m}
 function itemPrintCost(it){return(it.print||0)*(it.minQty||0)}
 function itemShipping(it){return it.shipping||0}
@@ -307,7 +319,7 @@ function itemNet(it,m){return itemRev(it)-itemCommercial(it,m)-itemPrintCost(it)
 function sheetMisc(s){return(s.miscFees||[]).reduce((t,f)=>t+(f.amt||0),0)}
 function sheetRev(s){return s.items.reduce((t,it)=>t+itemRev(it),0)}
 function sheetCost(s){const m=feeMult(s);return sheetFee(s)+s.items.reduce((t,it)=>t+itemCommercial(it,m)+itemPrintCost(it)+itemShipping(it),0)+sheetMisc(s)}
-function status(it){if(it.sel===null)return'p';if(!it.artists[it.sel].fee)return'e';return'd'}
+function status(it){if(it.sel===null||it.sel===undefined)return'p';if(!it.artists||!it.artists[it.sel])return'p';if(!it.artists[it.sel].fee)return'e';return'd'}
 function fmt(n){const r=Math.round(n*100)/100;return Number.isInteger(r)?String(r):r.toFixed(2).replace(/\.?0+$/,'')}
 
 function render(){renderTabs();renderPanels();calcGrand()}
