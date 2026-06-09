@@ -209,7 +209,7 @@ select.inline:focus{outline:none;border-color:var(--blue)}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
-const PASSWORD = 'doujinfoundinyoureyes';
+const PASSWORD = 'doujin2024';
 
 firebase.initializeApp({
   apiKey: "AIzaSyBHBDBv3JrN4qO3jSIXCMrshDTUQ_bYln0",
@@ -250,6 +250,7 @@ if(sessionStorage.getItem('ct_auth')==='1'){
 
 const defaultSheets=[{
   title:"稿圖 1",feeBase:0,feeMode:"commercial",
+  agencyPct:5,
   miscFees:[{name:"打樣費",amt:0},{name:"打樣郵費",amt:0},{name:"代發費",amt:0}],
   items:[
     {g:"色紙",spec:"14x21cm 觸感膜",artists:[{n:"秋莜",fee:0},{n:"里小拾",fee:0}],sel:null,price:0,minQty:0,sellQty:0,print:0,agency:0,vendor:""},
@@ -313,12 +314,13 @@ function sheetFee(s){return(s.feeBase||0)*feeMult(s)}
 function itemArtistFee(it){if(it.sel===null||it.sel===undefined||!it.artists)return 0;const a=it.artists[it.sel];return a?a.fee:0}
 function itemCommercial(it,m){return itemArtistFee(it)*m}
 function itemPrintCost(it){return(it.print||0)*(it.minQty||0)}
-function itemAgency(it){return itemRev(it)*(it.agency||0)/100}
+function itemAgency(it){return 0}
 function itemRev(it){return(it.price||0)*(it.sellQty||0)}
 function itemNet(it,m){return itemRev(it)-itemCommercial(it,m)-itemPrintCost(it)-itemAgency(it)}
 function sheetMisc(s){return(s.miscFees||[]).reduce((t,f)=>t+(f.amt||0),0)}
+function sheetAgency(s){return sheetRev(s)*(s.agencyPct||0)/100}
 function sheetRev(s){return s.items.reduce((t,it)=>t+itemRev(it),0)}
-function sheetCost(s){const m=feeMult(s);return sheetFee(s)+s.items.reduce((t,it)=>t+itemCommercial(it,m)+itemPrintCost(it)+itemAgency(it),0)+sheetMisc(s)}
+function sheetCost(s){const m=feeMult(s);return sheetFee(s)+s.items.reduce((t,it)=>t+itemCommercial(it,m)+itemPrintCost(it),0)+sheetMisc(s)+sheetAgency(s)}
 function status(it){if(it.sel===null||it.sel===undefined)return'p';if(!it.artists||!it.artists[it.sel])return'p';if(!it.artists[it.sel].fee)return'e';return'd'}
 function fmt(n){const r=Math.round(n*100)/100;return Number.isInteger(r)?String(r):r.toFixed(2).replace(/\.?0+$/,'')}
 
@@ -342,9 +344,9 @@ function renderPanels(){
       const st=status(it),rc=st==='d'?'row-decided':st==='p'?'row-pending':'row-empty';
       const sb=st==='d'?'sub-d':st==='p'?'sub-p':'sub-e';
       const fee=itemArtistFee(it),commercial=itemCommercial(it,mult);
-      const printCost=itemPrintCost(it),agencyFee=itemAgency(it);
+      const printCost=itemPrintCost(it);
       const rev2=itemRev(it),net=itemNet(it,mult),netOk=net>=0;
-      const hasData=rev2||commercial||printCost||agencyFee;
+      const hasData=rev2||commercial||printCost;
       const badge=st==='d'?'<span class="badge bd">已選</span>':st==='p'?'<span class="badge bp">待定</span>':'<span class="badge be">待填</span>';
       const opts=it.artists.map((ar,ai)=>`<option value="${ai}"${it.sel===ai?' selected':''}>${ar.n}</option>`).join('')+`<option value="null"${it.sel===null?' selected':''}>— 未選 —</option>`;
       return`<tr class="${rc}">
@@ -356,7 +358,6 @@ function renderPanels(){
         <td><input class="ci" type="number" min="0" step="any" value="${it.minQty||''}" placeholder="0" onchange="updItem(${si},${ii},'minQty',this.value)"></td>
         <td><input class="ci" type="number" min="0" step="any" value="${it.price||''}" placeholder="0" onchange="updItem(${si},${ii},'price',this.value)"></td>
         <td><input class="ci" type="number" min="0" step="any" value="${it.sellQty||''}" placeholder="0" onchange="updItem(${si},${ii},'sellQty',this.value)"></td>
-        <td><input class="ci" type="number" min="0" step="any" value="${it.agency||''}" placeholder="0" onchange="updItem(${si},${ii},'agency',this.value)"></td>
         <td class="tr" style="font-family:'DM Mono',monospace">${rev2?'$'+fmt(rev2):'—'}</td>
         <td class="tr ${netOk?'net-pos':'net-neg'}">${hasData?(netOk?'+':'-')+' $'+fmt(Math.abs(net)):'—'}</td>
         <td>${badge}</td>
@@ -367,8 +368,7 @@ function renderPanels(){
         <td class="tr" colspan="2">${commercial?'$'+fmt(commercial):'—'}</td>
         <td colspan="3">↳ 印刷成本（@$${fmt(it.print||0)} × 起印${fmt(it.minQty||0)}）</td>
         <td class="tr">${printCost?'$'+fmt(printCost):'—'}</td>
-        <td class="tr" style="color:#d04040">${agencyFee?'-$'+fmt(agencyFee):'—'}</td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
       </tr>`;
     }).join('');
     const mCards=s.items.map((it,ii)=>{
@@ -376,8 +376,8 @@ function renderPanels(){
       it.artists=it.artists.map(a=>a&&a.n?a:{n:'（待填）',fee:0});
       if(it.sel!==null&&it.sel!==undefined&&it.sel>=it.artists.length)it.sel=null;
       const st=status(it),cls=st==='d'?'decided':st==='p'?'pending':'empty';
-      const commercial=itemCommercial(it,mult),printCost=itemPrintCost(it),agencyFee=itemAgency(it);
-      const rev2=itemRev(it),net=itemNet(it,mult),netOk=net>=0,hasData=rev2||commercial||printCost||agencyFee;
+      const commercial=itemCommercial(it,mult),printCost=itemPrintCost(it);
+      const rev2=itemRev(it),net=itemNet(it,mult),netOk=net>=0,hasData=rev2||commercial||printCost;
       const opts=it.artists.map((ar,ai)=>`<option value="${ai}"${it.sel===ai?' selected':''}>${ar.n}</option>`).join('')+`<option value="null"${it.sel===null?' selected':''}>— 未選 —</option>`;
       return`<div class="m-card ${cls}">
         <div class="m-card-head"><input class="m-item-name" type="text" value="${it.g}" onchange="updateName(${si},${ii},this.value)"><button class="del-btn" onclick="delItem(${si},${ii})">✕</button></div>
@@ -388,14 +388,13 @@ function renderPanels(){
           <div class="m-field"><label>起印量</label><input type="number" min="0" step="any" value="${it.minQty||''}" placeholder="0" onchange="updItem(${si},${ii},'minQty',this.value)"></div>
           <div class="m-field"><label>售價 ($)</label><input type="number" min="0" step="any" value="${it.price||''}" placeholder="0" onchange="updItem(${si},${ii},'price',this.value)"></div>
           <div class="m-field"><label>預計實售量</label><input type="number" min="0" step="any" value="${it.sellQty||''}" placeholder="0" onchange="updItem(${si},${ii},'sellQty',this.value)"></div>
-          <div class="m-field"><label>代理費 (%)</label><input type="number" min="0" max="100" step="0.1" value="${it.agency||''}" placeholder="0" onchange="updItem(${si},${ii},'agency',this.value)"></div>
+
           <div class="m-field"><label>&nbsp;</label><button class="artist-mgmt-btn" style="padding:6px 8px;width:100%" onclick="openArtistEditor(${si},${ii})">編輯美工</button></div>
         </div>
         <div class="m-sub">
           <div class="m-sub-item"><div class="lbl">商用費</div><div class="val">${commercial?'$'+fmt(commercial):'—'}</div></div>
           <div class="m-sub-item"><div class="lbl">印刷成本</div><div class="val">${printCost?'$'+fmt(printCost):'—'}</div></div>
           <div class="m-sub-item"><div class="lbl">收入</div><div class="val">${rev2?'$'+fmt(rev2):'—'}</div></div>
-          <div class="m-sub-item"><div class="lbl">代理費</div><div class="val" style="color:#d04040">${agencyFee?'-$'+fmt(agencyFee):'—'}</div></div>
         </div>
         <div class="m-foot">
           <span class="badge ${st==='d'?'bd':st==='p'?'bp':'be'}">${st==='d'?'已選':st==='p'?'待定':'待填'}</span>
@@ -441,7 +440,6 @@ function renderPanels(){
           <th class="tr">稿費</th><th>廠商</th>
           <th class="tr">印刷費@($)</th><th class="tr">起印量</th>
           <th class="tr">售價($)</th><th class="tr">預計實售量</th>
-          <th class="tr">代理費%</th>
           <th class="tr">收入</th><th class="tr">淨收益</th>
           <th>狀態</th><th></th>
         </tr></thead>
@@ -454,6 +452,15 @@ function renderPanels(){
         <div class="misc-rows">${miscRows}</div>
         <button class="add-misc-btn" onclick="addMisc(${si})">＋ 加費用</button>
         <div class="misc-total">雜費合計：<strong>$${fmt(miscTot)}</strong></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border2);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--text2);font-weight:500">代理費</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--text2)">總收入 ×</span>
+            <input class="ci" type="number" min="0" max="100" step="0.1" value="${s.agencyPct||0}" style="width:52px" onchange="updSheet(${si},'agencyPct',this.value)">
+            <span style="font-size:12px;color:var(--text2)">%</span>
+            <span style="font-size:12px;font-weight:600;color:#d04040">= -$${fmt(sheetAgency(s))}</span>
+          </div>
+        </div>
       </div>
       <div class="sheet-summary">
         <div class="gstat"><div class="lbl">總成本</div><div class="val">$${fmt(cost)}</div></div>
@@ -478,7 +485,7 @@ function calcGrand(){
 }
 
 function switchTab(i){activeTab=i;render()}
-function addSheet(){sheets.push({title:`稿圖 ${sheets.length+1}`,feeBase:0,feeMode:'commercial',miscFees:[{name:"打樣費",amt:0},{name:"打樣郵費",amt:0},{name:"代發費",amt:0}],items:[{g:"新品項",spec:"",artists:[{n:"（美工名）",fee:0}],sel:null,price:0,minQty:0,sellQty:0,print:0,agency:0,vendor:""}]});activeTab=sheets.length-1;render();saveData()}
+function addSheet(){sheets.push({title:`稿圖 ${sheets.length+1}`,feeBase:0,feeMode:'commercial',agencyPct:5,miscFees:[{name:"打樣費",amt:0},{name:"打樣郵費",amt:0},{name:"代發費",amt:0}],items:[{g:"新品項",spec:"",artists:[{n:"（美工名）",fee:0}],sel:null,price:0,minQty:0,sellQty:0,print:0,agency:0,vendor:""}]});activeTab=sheets.length-1;render();saveData()}
 function delSheet(si){if(sheets.length<2)return;sheets.splice(si,1);activeTab=Math.min(activeTab,sheets.length-1);render();saveData()}
 function updTitle(si,v){sheets[si].title=v;renderTabs();saveData()}
 function updSheet(si,f,v){sheets[si][f]=f==='feeBase'?parseFloat(v)||0:v;render();saveData()}
